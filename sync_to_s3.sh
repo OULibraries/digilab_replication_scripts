@@ -1,10 +1,14 @@
 #!/bin/bash
 
-# sync new bags from Norfile to S3://<>/UL-Bagit--IF they came from nas1 they go to ul-bagit/private/
-aws s3 sync [options] <path from norfile> s3://ul-bagit/private/
+BAGIT=$1
+BAGIT2=$2
+S3BAGIT=$3
 
-# sync new bags from Norfile to S3://<>/UL-Bagit--IF they came from nas2 they go to ul-bagit/source/
-aws s3 sync <path from norfile> s3://ul-bagit/source/
+# sync new bags from NAS1 to S3://ul-bagit
+aws s3 sync [options] $BAGIT $S3BAGIT
+
+# sync new bags from NAS2 to S3://ul-bagit
+aws s3 sync $BAGIT $S3BAGIT
 
 # Post notification to Slack channel digilab-replication-notifications
-curl -X POST -H 'Content-type: application/json' --data '{"text":"Scheduled bag copy from Norfile to S3 completed successfully"}' $WEBHOOK
+curl -X POST -H 'Content-type: application/json' --data '{"text":"Scheduled bag copy from NASes to S3 completed successfully"}' $WEBHOOK
