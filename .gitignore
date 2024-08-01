@@ -1,3 +1,4 @@
-rsync_nas1.sh
-rsync_nas2.sh
-s3_sync_main.sh
+
+config.txt
+config
+
