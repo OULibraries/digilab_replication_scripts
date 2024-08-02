@@ -17,9 +17,10 @@ mountpoint $NAS2 || exit 1
 
 #--include=private/ shareok/ preservation/ 
   rysnc -azv --dry-run --omit-dir-times --no-perms --update --delete --log-file=$LOGFILE --include=$INCLUDE_PRIVATE_ONLY $MOUNTPOINT 
+  #"""insert for loop to move bags only--be careful not to overwrite bags by syncing tombstone to norfile!!!"""
 
   rysnc -azv --dry-run --omit-dir-times --no-perms --update --delete --log-file=$LOGFILE --include=$INCLUDE_PUBLIC_ONLY $MOUNTPOINT
 
-  curl -X POST -H 'Content-type: application/json' --data '{"text":"Scheduled bag move from Bagit to Norfile completed successfully"}' $WEBHOOK
+  curl -X POST -H 'Content-type: application/json' --data '{"text":"Scheduled bag move from Bagit to Norfile completed successfully"}' $SLACK_WEBHOOK
 
 ) 200>$LOCKFILE
