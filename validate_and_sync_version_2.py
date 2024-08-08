@@ -3,8 +3,7 @@
 import bagit
 import subprocess
 import os
-import sys
-from pathlib import Path
+
 from config import *
 
 if os.path.isdir('path to object'):
