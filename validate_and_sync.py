@@ -1,26 +1,30 @@
-!#/usr/bin/python
+#!/usr/bin/python
 
 import bagit
 import subprocess
 import os
 import sys
+from pathlib import Path
 from config import *
 
-path = sys.argv[1]
+nas_path = sys.argv[1]
 
-if os.path.isdir(path):
-    print(path+ "is a directory.")
-    bag = bagit.Bag(path)
+p = Path(nas_path)
+for child in p.iterdir(): child
+
+if os.path.isdir(child):
+    print(child + "is a directory.")
+    bag = bagit.Bag(child)
     if bag.is_valid():
-        print(path + "is a valid bag.")
-        subprocess.check_call("./rsync_script  .sh %s" %(str(path)))
-        print(path + "will be copied to Norfile")
-        subprocess.check_call("./s3_sync_script  .sh %s" %(str(path)))
-        print(path + "will be copied to S3")
+        print(child + "is a valid bag.")
+        subprocess.check_call("./rsync_script  .sh %s" %(str(child)))
+        print(child + "will be copied to Norfile")
+        subprocess.check_call("./s3_sync_script  .sh %s" %(str(child)))
+        print(child + "will be copied to S3")
     else:
-        print(path + "is not a valid bag.")
+        print(child + "is not a valid bag.")
 else:
-    print(path + "is a file.") 
+    print(child + "is a file.") 
 
 
 
