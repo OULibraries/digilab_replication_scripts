@@ -17,9 +17,9 @@ if os.path.isdir(child):
     bag = bagit.Bag(child)
     if bag.is_valid():
         print(child + "is a valid bag.")
-        subprocess.check_call("./rsync_script  .sh %s" %(str(child)))
+        subprocess.call("./rsync_script  .sh %s" %(str(child)))
         print(child + "will be copied to Norfile")
-        subprocess.check_call("./s3_sync_script  .sh %s" %(str(child)))
+        subprocess.call("./s3_sync_script  .sh %s" %(str(child)))
         print(child + "will be copied to S3")
     else:
         print(child + "is not a valid bag.")
