@@ -6,9 +6,11 @@ import os
 import boto3
 import logging
 import sys
+import glob
 
+from secrets.py import ACCESS_KEY_ID, 
 from botocore.exceptions import ClientError
-#from config import *
+#from config.py import *
 
 #substitute variable bag_path for 'path to object' in functions
 #use isdir in __main__
@@ -16,14 +18,15 @@ def main():
     bag_path = sys.argv[1]
     rsync_dest = sys.argv[2]
     bucket = sys.argv[3]
+    s3_client = boto3.client('s3')
 
     if not os.path.isdir(bag_path):
         print("%s is not a directory." % bag_path)
         return
     
-    if not os.path.ismount(rsync_dest):
-        print("%s is not a mounted share" % rsync_dest)
-        return
+ #   if not os.path.ismount(rsync_dest):
+ #       print("%s is not a mounted share" % rsync_dest)
+ #       return
     
     try:
         bag = bagit.Bag(bag_path)    
@@ -34,32 +37,38 @@ def main():
         print("not a bag")  
 
 
-#if the bag is valid, pass the path to rsync--not sure the best way to do this
+#if the bag is valid, pass the path to rsync
 
 #keep -v for testing but don't need in prod
 # pull in variable values from config then --dry-run            
-#    subprocess.call(['rsync -av --dry-run --update --no-perms --omit-dir-times $bag_path $rsync_dest'], shell=True)
+
     
-    subprocess.call(['rsync', '-av', '--dry-run', '--update', '--no-perms', '--omit-dir-times',"{0}".format(bag_path),"{0}".format(rsync_dest)],shell=True)
+    subprocess.call(['rsync', '-av', '--dry-run', '--update', '--no-perms', '--omit-dir-times',"{0}".format(bag_path),"{0}".format(rsync_dest)])
 
-#check if "file_name" can refer to a bag/directory
+    #iterate through bag and list files
+    files = glob.glob(bag_path)
+    files
+    #upload contents of the bag
+    for file in files:
+        upload_to_s3(file, 'ul-bagit')
+        print('uploaded ', file)
 
-bag_path = "./test_valid_bag"
-bucket = "s3://ul-bagit/source/"
-def upload_to_s3(bag_path, bucket, object_name=None, ExtraArgs={'dryrun'}):
+
+
+#There is no '--dryrun' arg in boto3
+def upload_to_s3(file_name, bucket, object_name=None):
     if object_name is None:
-        object_name = os.path.basename(bag_path)
+        object_name = file_name
 
-    s3_client = boto3.client('s3')
     try:
-        response = s3_client.upload_to_s3(bag_path, bucket, object_name)
+        response = s3_client.upload_to_s3(file_name, bucket, object_name)
     except ClientError as e:
         logging.error(e)
         return False
     return True
-    print(bag_path, bucket, object_name)
+    print(response)
 
-#put communication inside __main__
-#    print(file_name + "uploaded to s3.")
+
+
 if __name__ == "__main__":
     main()

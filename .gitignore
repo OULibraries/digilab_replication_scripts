@@ -2,3 +2,4 @@
 config.txt
 config
 verify_bags.sh
+secrets.py
