@@ -8,9 +8,10 @@ import logging
 import sys
 import glob
 
-from secrets.py import ACCESS_KEY_ID, 
+#from secrets.py import ACCESS_KEY_ID,SECRET_ACCESS_KEY,REGION,BUCKET_NAME 
 from botocore.exceptions import ClientError
-#from config.py import *
+#variables imported from config.py must be listed explicitly
+#from config.py import 
 
 #substitute variable bag_path for 'path to object' in functions
 #use isdir in __main__
@@ -40,9 +41,8 @@ def main():
 #if the bag is valid, pass the path to rsync
 
 #keep -v for testing but don't need in prod
-# pull in variable values from config then --dry-run            
-
-    
+          
+   
     subprocess.call(['rsync', '-av', '--dry-run', '--update', '--no-perms', '--omit-dir-times',"{0}".format(bag_path),"{0}".format(rsync_dest)])
 
     #iterate through bag and list files
