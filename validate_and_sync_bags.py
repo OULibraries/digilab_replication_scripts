@@ -16,7 +16,7 @@ from upload_to_s3 import upload_dir
 #substitute variable bag_path for 'path to object' in functions
 #use isdir in __main__
 def validate_and_rsync(bag_path, bucket, s3_dest, tag, rsync_dest):
-
+    
     s3_client = boto3.client('s3')
 
     if not os.path.isdir(bag_path):
@@ -42,16 +42,15 @@ def validate_and_rsync(bag_path, bucket, s3_dest, tag, rsync_dest):
    
     subprocess.call(['rsync', '-av', '--dry-run', '--update', '--no-perms', '--omit-dir-times',"{0}".format(bag_path),"{0}".format(rsync_dest)])
 
-
-    upload_dir(bag_path=args.bag_path, bucket=args.bucket,
-               s3_dest=args.s3_dest, tag=args.tag)
+    upload_dir(bag_path, bucket, s3_dest, tag)
+#    upload_dir(bag_path=args.bag_path, bucket=args.bucket, s3_dest=args.s3_dest)
      
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--bag_path", help="which dir to upload to aws")
     parser.add_argument("--bucket", help="to which bucket to upload in aws")
-    parser.add_argument("--s3_dest", help="to which 'directory' in s3 bucket")
+    parser.add_argument("--s3_dest", help="to which 'directory' in s3")
     parser.add_argument("--rsync_dest", help="local rsync dest")
     parser.add_argument("--tag", help="some tag to select files, like *png", default='*')
     args = parser.parse_args()
