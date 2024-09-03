@@ -4,7 +4,8 @@ from validate_and_sync_bags import validate_and_rsync
 
 
 def main(bag_path, bag_name, bucket, s3_dest, tag, rsync_dest):
-    
+#"continue" statement to move to next iteration rather than return 
+# for file in __    
     if not os.path.isdir(bag_path):
         print("%s is not a directory." % bag_path)
         return

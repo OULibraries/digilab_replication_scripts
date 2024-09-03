@@ -4,7 +4,7 @@ import os
 import glob
 import boto3
 
-def upload_dir(bag_path, s3_dest, bucket, tag, prefix='/'):
+def upload_dir(bag_path, bucket, key, tag, prefix='/'):
     """
     from current working directory, upload a 'bag_path' with all its subcontents (files and subdirectories...)
     to a aws bucket
@@ -35,13 +35,13 @@ def upload_dir(bag_path, s3_dest, bucket, tag, prefix='/'):
                 fileName = fileName.replace(prefix, "", 1) # remove one instance of prefix
             print(f"fileName {fileName}")
 
-            awsPath = os.path.join(s3_dest, str(fileName))
+            awsPath = os.path.join(key, str(fileName))
             s3.meta.client.upload_file(fileName, bucket, awsPath)
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bag_path", help="which dir to upload to aws")
+    parser.add_argument("--bag_path", help="which local dir to upload to aws")
     parser.add_argument("--bucket", help="to which bucket to upload in aws")
     parser.add_argument("--s3_dest", help="to which 'directory' in aws")
     parser.add_argument("--tag", help="some tag to select files, like *png", default='*')
