@@ -23,8 +23,10 @@ def main(bag_path, bucket, key, tag, rsync_dest):
                 return
         #take path to NAS directory
         #Iterate through skipping tombstones and files, verifying directories
-        for dirs in os.walk(bag_path):
+        for dirs in os.listdir(bag_path):
                 for dirname in dirs:
+                        outPath = os.path.join(bag_path,'/',dirname)
+                        print(outPath)
                         if not os.path.isdir(dirname):
                                 print("%s is not a directory." % dirname)
                                 continue
@@ -75,8 +77,9 @@ def upload_dir(bag_path, bucket, key, tag, prefix='/'):
                 rows = len(fileNames)
                 for i, fileName in enumerate(fileNames):
                         fileName = str(fileName).replace(cwd, '')
-                        fileName.startswith(prefix):  # only modify the text if it starts with the prefix
-                        fileName = fileName.replace(prefix, "", 1) # remove one instance of prefix
+                        if fileName.startswith(prefix):
+                        # only modify the text if it starts with the prefix
+                                fileName = fileName.replace(prefix, "", 1) # remove one instance of prefix
                         print(f"fileName {fileName}")
 
         awsPath = os.path.join(key, str(fileName))
@@ -89,8 +92,8 @@ if __name__ == "__main__":
     parser.add_argument("--bucket", help="to which bucket to upload in aws")
     parser.add_argument("--key", help="s3 key (path) to which 'directory' in s3 bucket")
     parser.add_argument("--rsync_dest", help="local rsync dest")
-    parser.add_argument("--bag_name", help="name of the bag_name to copy")
+#    parser.add_argument("--bag_name", help="name of the bag_name to copy")
     parser.add_argument("--tag", help="some tag to select files, like *png", default='*')
     args = parser.parse_args()
-    main(bag_path=args.bag_path, bag_name=args.bag_name, bucket=args.bucket, key=args.key,
+    main(bag_path=args.bag_path, bucket=args.bucket, key=args.key,
          tag=args.tag, rsync_dest=args.rsync_dest)
