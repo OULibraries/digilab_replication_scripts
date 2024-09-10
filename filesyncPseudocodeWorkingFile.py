@@ -13,9 +13,9 @@ from botocore.exceptions import ClientError
    tag        == default is null, not currently in use but can be added
    rsync_dest == destination directory on Norfile for rsync from NASes
 '''
-def main(bag_path, bucket, key, tag, rsync_dest):
+def main(bag_path, bucket, key, tag, rsync_dest, prefix='/'):
         
-        s3_client = boto3.client('s3')
+#        s3_client = boto3.client('s3')
         
         #verify that rsync_dest in norfile is mounted
         if not os.path.ismount(rsync_dest):
@@ -23,50 +23,6 @@ def main(bag_path, bucket, key, tag, rsync_dest):
                 return
         #take path to NAS directory
         #Iterate through skipping tombstones and files, verifying directories
-        for dirs in os.listdir(bag_path):
-                for dirname in dirs:
-                        outPath = os.path.join(bag_path,'/',dirname)
-                        print(outPath)
-                        if not os.path.isdir(dirname):
-                                print("%s is not a directory." % dirname)
-                                continue
-
-        #Find directories and send to method determining if it is a bag    
-                        try:
-                                bag = bagit.Bag(dirname)    
-                                if not bag.is_valid(): 
-                                        print("%s is not a valid bag." % dirname)
-                                        continue
-        #If not a bag continue loop
-                        except Exception as err:
-                                print(f"Unexpected {err=}, {type(err)=}")
-                                raise
-
-        #If is bag determine rsync and s3 directory
-        # need to set s3_dest directory for rsync dest = nas path + rsync_dest
-                        if "private" in dirname or "preservation" in dirname or "shareok" in dirname:
-                                dest_subdir = os.path.split(dirname)[1]
-                                rsync_dest = os.path.join("private",dest_subdir)
-                                key = os.path.join(bucket,rsync_dest)
-                                print(os.path.join("private",dest_subdir))
-                                subprocess.call(['rsync', '-av', '--dry-run', '--update', '--no-perms', '--omit-dir-times',"{0}".format(bag_path),"{0}".format(rsync_dest)])
-                                upload_dir(bag_path, bucket, key, tag, prefix='/')
-                        else:
-                                rsync_dest="source"
-                                key = os.path.join(bucket,rsync_dest)
-                                print(rsync_dest)
-                                subprocess.call(['rsync', '-av', '--dry-run', '--update', '--no-perms', '--omit-dir-times',"{0}".format(bag_path),"{0}".format(rsync_dest)])
-                                upload_dir(bag_path, bucket, key, tag, prefix='/')
-
-
-        
-#validate_and_rsync(bag_path, bucket, key ((this should be Key)), rsync_dest)
-#invoke validate_and_rsync
-        '''rsync to norfile with destination folder matching source in NAS then
-        invoke upload_dir to upload to s3 in either source/ or private/
-        # this script should use an argument for s3 Key rather than bucket to allow a path-like
-        # key to be passed such as ul-bagit-test/private/preservation/a_bag'''
-def upload_dir(bag_path, bucket, key, tag, prefix='/'):
         s3 = boto3.resource('s3')
         cwd = str(Path.cwd())
         p = Path(os.path.join(Path.cwd(), bag_path))
@@ -82,8 +38,55 @@ def upload_dir(bag_path, bucket, key, tag, prefix='/'):
                                 fileName = fileName.replace(prefix, "", 1) # remove one instance of prefix
                         print(f"fileName {fileName}")
 
-        awsPath = os.path.join(key, str(fileName))
-        s3.meta.client.upload_file(fileName, bucket, awsPath)
+        verify_path = os.path.join(key, str(fileName))
+       
+
+
+#       for dirs in os.listdir(bag_path):
+#                for dir in dirs:
+#                for dir in dirs:
+#                        outPath = os.path.join(bag_path, dirs)
+#                        print(outPath)
+        for bag in bag_path:
+                if not os.path.isdir(bag_path):
+                        print("%s is not a directory." % bag_path)
+                        continue
+        
+
+#Find directories and send to method determining if it is a bag    
+                try:
+                        bag = bagit.Bag(bag_path)    
+                        if not bag.is_valid(): 
+                                print("%s is not a valid bag." % bag_path)
+                        continue
+        #If not a bag continue loop
+                except Exception as err:
+                        print(f"Unexpected {err=}, {type(err)=}")
+                        raise
+
+#If is bag determine rsync and s3 directory
+# need to set s3_dest directory for rsync dest = nas path + rsync_dest
+        if "private" in bag_path or "preservation" in bag_path or "shareok" in bag_path:
+                dest_subdir = os.path.split(bag_path)[1]
+                rsync_dest = os.path.join("private",dest_subdir)
+                awsPath = os.path.join(bucket,rsync_dest)
+                print(os.path.join("private",dest_subdir))
+                subprocess.call(['rsync', '-av', '--dry-run', '--update', '--no-perms', '--omit-dir-times',"{0}".format(bag_path),"{0}".format(rsync_dest)])
+                s3.meta.client.upload_file(fileName, bucket, awsPath)
+        else:
+                rsync_dest="source"
+                awsPath = os.path.join(bucket,rsync_dest)
+                print(rsync_dest)
+                subprocess.call(['rsync', '-av', '--dry-run', '--update', '--no-perms', '--omit-dir-times',"{0}".format(bag_path),"{0}".format(rsync_dest)])                          
+                s3.meta.client.upload_file(fileName, bucket, awsPath)
+
+
+#validate_and_rsync(bag_path, bucket, key ((this should be Key)), rsync_dest)
+#invoke validate_and_rsync
+        '''rsync to norfile with destination folder matching source in NAS then
+        invoke upload_dir to upload to s3 in either source/ or private/
+        # this script should use an argument for s3 Key rather than bucket to allow a path-like
+        # key to be passed such as ul-bagit-test/private/preservation/a_bag'''
 
 if __name__ == "__main__":
     import argparse
