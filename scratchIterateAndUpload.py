@@ -5,6 +5,7 @@ import boto3
 from pathlib import Path
 import glob
 import posixpath
+import re
 
 from botocore.exceptions import ClientError
 
@@ -30,12 +31,21 @@ def buildDirectoryList(sourcePath):
 #get a list of bags from sourcePath--use glob or similar
         p = Path(sourcePath)
         allPaths = list(p.glob('**')) 
-# need to strip the 'PosixPath' and () from list items  
+ 
 # select directories only
+        rawPaths = str([i for i in allPaths if Path(i).is_dir()])
         dirPaths = []
         for i in allPaths:
-            dirPaths.append([i for i in allPaths if Path(i).is_dir()])
-            return dirPaths
+           rawPaths=rawPaths.replace("('","*(")
+           rawPaths=rawPaths.replace("')",")*")
+           x = rawPaths.split("*")
+           
+           for i in x:
+                if i.startswith("(") and i.endswith(")"):
+                        dirPaths.append(i[1:-1])
+           return dirPaths
+        
+
         
 # this function will return a list of valid bags only--tested        
 def buildBagList(dirPaths):
