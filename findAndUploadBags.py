@@ -72,17 +72,28 @@ def uploadFileList(fileList, bucket):
 
 # ADD print statement reporting bags uploaded successfully
 
-# TO DO--New features:
+# ADD rsync command string
 
-# add guardrail to prevent overwriting objects in s3
+# TODO--New features:
+
+# add guardrail to prevent overwriting objects in s3--see https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html --may not work for our use case
+# could do s3 ls on the bucket and if bag == bag from s3 skip it
 
 # either include arguments in upload_file to compute checksum or
 # add function like def checksumBags()
+
+# NOTE: *If we change upload_file to put_object we can use the --if-none-match kwarg to prevent
+# overwrites. This also allows us to use the checksum functionality built into the s3 PutObject api* https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html#API_PutObject_Examples
+
+# Does this negate the need to list the files individually? --We probably still want to know exactly # what is being uploaded and some of the files are very large so uploading a bag at a time might be a
+# risky
 
 # Bags contain 2 manifest files and 2 tagmanifest files--manifest contains checksums
 # for the Data/ directory and each object contained within. Tagmanifest contains
 # checksums for bagit.txt, bag-info.txt, and the 2 manifest files. We could checksum the
 # the bag on upload and it would contain the nested checksums already within
+# NOTE: manifest and tagmanifest checksums are hex and would need to be converted to
+#       base64 for use with s3 if we opted for "precalculated checksum"
 
 # don't upload if checksums don't match, print list of those bags
 
