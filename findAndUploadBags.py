@@ -16,7 +16,7 @@ def main(sourcePath, bucket, rsyncDest):
     """
 
     if not os.path.ismount(rsyncDest):
-        print("%s is not a mounted share" % rsyncDest)
+        print("%s is not a mounted share" % (rsyncDest))
         return
 
     dirPaths = buildDirectoryList(sourcePath)
@@ -25,7 +25,7 @@ def main(sourcePath, bucket, rsyncDest):
 
     for bagPath in bagPaths:
         fileList = buildFileList(bagPath)
-        uploadFileList(fileList, bucket)
+        uploadFileList(fileList, bucket, rsyncDest)
 
 
 def buildDirectoryList(sourcePath):
@@ -34,12 +34,11 @@ def buildDirectoryList(sourcePath):
     allPaths = list(p.glob("*"))
     # select top level objects and validate as a directory
     dirPaths = [str(i) for i in allPaths if i.is_dir()]
+    print("%s will be validated as bags" % (dirPaths))
     return dirPaths
 
 
-# ADD print statement dirPaths, "to be validated for rsync and upload to s3"
-
-
+## Need to append valid bag to list--the function stops after the first bag tested
 def bagExceptionWrapper(path):
     try:
         return bagit.Bag(path).is_valid()
@@ -50,10 +49,8 @@ def bagExceptionWrapper(path):
 # this function selects valid bags from directories
 def buildBagList(dirPaths):
     bagPaths = [i for i in dirPaths if bagExceptionWrapper(i)]
+    print("%s are valid bags" % (str(bagPaths)))
     return bagPaths
-
-
-# ADD print statement of bagPaths, "will be rsynced and uploaded to s3"
 
 
 def buildFileList(bagPath):
@@ -63,18 +60,51 @@ def buildFileList(bagPath):
     return filePaths
 
 
-def uploadFileList(fileList, bucket):
+def uploadFileList(fileList, bucket, rsyncDest):
     s3_client = boto3.client("s3")
+    # check for files in s3--if they exist, exclude from upload
 
     for fileName in fileList:
-        s3_client.upload_file(fileName, bucket, str(fileName))
+        if not s3FileExists(fileName, bucket):
+            s3_client.upload_file(fileName, bucket, str(fileName))
+            print("Uploaded file: %s" % (fileName))
+
+        if not norfileFileExists(fileName, rsyncDest):
+            subprocess.call(
+                [
+                    "rsync",
+                    "-av",
+                    "--dry-run",
+                    "--ignore-existing",
+                    "--no-perms",
+                    "--omit-dir-times",
+                    "{0}".format(fileName),
+                    "{0}".format(rsyncDest),
+                ]
+            )
+            print("Copied file %s to %s" % (fileName, rsyncDest))
 
 
-# ADD print statement reporting bags uploaded successfully
+def s3FileExists(fileName, bucket):
+    s3_client = boto3.client("s3")
+    try:
+        s3_client.head_object(Bucket=bucket, Key=fileName)
+        return True
+    except:
+        return False
 
-# ADD rsync command string
+
+def norfileFileExists(fileName, rsyncDest):
+    p = Path("%s/%s" % (rsyncDest, fileName))
+    # lookup pathlib way to join paths without specifying \ or /
+    return p.exists()
+
 
 # TODO--New features:
+
+# for each file in fileList
+# if it is in s3 don't copy
+#
 
 # add guardrail to prevent overwriting objects in s3--see https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html --may not work for our use case
 # could do s3 ls on the bucket and if bag == bag from s3 skip it
@@ -84,20 +114,6 @@ def uploadFileList(fileList, bucket):
 
 # NOTE: *If we change upload_file to put_object we can use the --if-none-match kwarg to prevent
 # overwrites. This also allows us to use the checksum functionality built into the s3 PutObject api* https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html#API_PutObject_Examples
-
-# Does this negate the need to list the files individually? --We probably still want to know exactly # what is being uploaded and some of the files are very large so uploading a bag at a time might be a
-# risky
-
-# Bags contain 2 manifest files and 2 tagmanifest files--manifest contains checksums
-# for the Data/ directory and each object contained within. Tagmanifest contains
-# checksums for bagit.txt, bag-info.txt, and the 2 manifest files. We could checksum the
-# the bag on upload and it would contain the nested checksums already within
-# NOTE: manifest and tagmanifest checksums are hex and would need to be converted to
-#       base64 for use with s3 if we opted for "precalculated checksum"
-
-# don't upload if checksums don't match, print list of those bags
-
-# print list of items with matching checksums
 
 
 if __name__ == "__main__":
