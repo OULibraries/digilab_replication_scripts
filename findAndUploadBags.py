@@ -95,25 +95,8 @@ def s3FileExists(fileName, bucket):
 
 
 def norfileFileExists(fileName, rsyncDest):
-    p = Path("%s/%s" % (rsyncDest, fileName))
-    # lookup pathlib way to join paths without specifying \ or /
+    p = Path("%s, %s" % (rsyncDest, fileName))
     return p.exists()
-
-
-# TODO--New features:
-
-# for each file in fileList
-# if it is in s3 don't copy
-#
-
-# add guardrail to prevent overwriting objects in s3--see https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html --may not work for our use case
-# could do s3 ls on the bucket and if bag == bag from s3 skip it
-
-# either include arguments in upload_file to compute checksum or
-# add function like def checksumBags()
-
-# NOTE: *If we change upload_file to put_object we can use the --if-none-match kwarg to prevent
-# overwrites. This also allows us to use the checksum functionality built into the s3 PutObject api* https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html#API_PutObject_Examples
 
 
 if __name__ == "__main__":
