@@ -65,11 +65,11 @@ def uploadFileList(fileList, bucket, rsyncDest):
     # check for files in s3--if they exist, exclude from upload
 
     for fileName in fileList:
-        if not s3FileExists(fileName, bucket):
+        if s3FileExists is False:
             s3_client.upload_file(fileName, bucket, str(fileName))
             print("Uploaded file: %s" % (fileName))
 
-        if not norfileFileExists(fileName, rsyncDest):
+        if norfileFileExists is False:
             subprocess.call(
                 [
                     "rsync",
