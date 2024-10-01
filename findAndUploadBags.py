@@ -74,7 +74,6 @@ def uploadFileList(fileList, bucket, rsyncDest):
                 [
                     "rsync",
                     "-av",
-                    "--dry-run",
                     "--ignore-existing",
                     "--no-perms",
                     "--omit-dir-times",
