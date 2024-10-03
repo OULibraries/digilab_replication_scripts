@@ -86,15 +86,15 @@ def uploadFileList(fileList, bucket, syncDest):
 
                 subprocess.check_call(
                     [
-                        "/home/mmalahy/syncCron.sh",
+                        "./syncCron.sh",
                         syncBag,
                         syncDest,
-                    ]
+                    ],
                 )
-                print("%s is copied to %s" % (syncBag, syncDest))
+                print("%s has been synced to %s" % (syncBag, syncDest))
 
             except CalledProcessError as e:
-                print("an error has occured %s" % e)
+                print("An error has occurred", e)
 
 
 def main(sourcePath, bucket, syncDest):
