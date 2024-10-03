@@ -6,6 +6,7 @@ from pathlib import Path
 import glob
 
 from botocore.exceptions import ClientError
+from subprocess import CalledProcessError
 
 
 def buildDirectoryList(sourcePath):
@@ -55,16 +56,16 @@ def s3FileExists(fileName, bucket):
 
 
 # need to strip the first element from the path to create a valid path for rsync
-def norfileFileExists(fileName, rsyncDest):
+def norfileFileExists(fileName, syncDest):
     delim = "/"
     sourceElements = Path(fileName).parts[1:]
     fileElements = "".join([str(elements) + delim for elements in sourceElements])
-    p = Path("%s/%s" % (rsyncDest, fileElements))
+    p = Path("%s/%s" % (syncDest, fileElements))
     #    print("The path is %s and file name is %s" % (p, sourceElements[-1]))
     return p.exists()
 
 
-def uploadFileList(fileList, bucket, rsyncDest):
+def uploadFileList(fileList, bucket, syncDest):
     s3_client = boto3.client("s3")
     # check for files in s3--if they exist, exclude from upload
     # make sure to give the fileName as a string for boto3--it doesn't like Path objects as S3 Keys
@@ -73,43 +74,38 @@ def uploadFileList(fileList, bucket, rsyncDest):
             s3_client.upload_file(fileName, bucket, str(fileName))
             print("Uploaded file %s to %s" % (fileName, bucket))
 
-        if norfileFileExists(fileName, rsyncDest) is False:
+        if norfileFileExists(fileName, syncDest) is False:
+            try:
+                delim = "/"
+                sourceElements = Path(fileName).parts[0:2]
+                syncBag = "".join(
+                    [str(elements) + delim for elements in sourceElements]
+                )
+                syncBag = syncBag[: len(syncBag) - len(delim)]
+                print("bag is %s" % (syncBag))
 
-            delim = "/"
-            #            destDir = Path(fileName).parts[0]
-            #            print("destDir is %s" % (rsyncDest))
-            sourceElements = Path(fileName).parts[1:]
-            filePath = "".join([str(elements) + delim for elements in sourceElements])
-            filePath = filePath[: len(filePath) - len(delim)]
-            print("filePath is %s" % (filePath))
-            fileDest = "".join([str(rsyncDest) + filePath])
-            print("fileDest is %s" % (fileDest))
+                subprocess.check_call(
+                    [
+                        "/home/mmalahy/syncCron.sh",
+                        syncBag,
+                        syncDest,
+                    ]
+                )
+                print("%s is copied to %s" % (syncBag, syncDest))
 
-            subprocess.run(
-                [
-                    "mkdir",
-                    "-p",
-                    "{}".format(rsyncDest),
-                    "&&",
-                    "cp",
-                    "{}".format(fileDest),
-                    "'$_'",
-                ]
-            )
-
-        else:
-            print("%s is already in %s" % (fileName, rsyncDest))
+            except CalledProcessError as e:
+                print("an error has occured %s" % e)
 
 
-def main(sourcePath, bucket, rsyncDest):
+def main(sourcePath, bucket, syncDest):
     """1)make a list of things that might be bags(in either private or source)--just top-level directories
     2)filter non-directories
     3)filter non-bags
     4)for each bag, build file list and upload files--s3 first
     """
 
-    #    if not os.path.ismount(rsyncDest):
-    #        print("%s is not a mounted share" % (rsyncDest))
+    #    if not os.path.ismount(syncDest):
+    #        print("%s is not a mounted share" % (syncDest))
     #        return
 
     dirPaths = buildDirectoryList(sourcePath)
@@ -118,7 +114,7 @@ def main(sourcePath, bucket, rsyncDest):
 
     for bagPath in bagPaths:
         fileList = buildFileList(bagPath)
-        uploadFileList(fileList, bucket, rsyncDest)
+        uploadFileList(fileList, bucket, syncDest)
 
 
 if __name__ == "__main__":
@@ -127,6 +123,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--sourcePath", help="which dir to upload to aws")
     parser.add_argument("--bucket", help="to which bucket to upload in aws")
-    parser.add_argument("--rsyncDest", help="local rsync dest")
+    parser.add_argument("--syncDest", help="local rsync dest")
     args = parser.parse_args()
-    main(sourcePath=args.sourcePath, bucket=args.bucket, rsyncDest=args.rsyncDest)
+    main(sourcePath=args.sourcePath, bucket=args.bucket, syncDest=args.syncDest)
