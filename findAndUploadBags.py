@@ -1,12 +1,12 @@
-from botocore.exceptions import ClientError
 from pathlib import Path
 from subprocess import CalledProcessError
 
-import bagit
-import boto3
-import glob
 import os
 import subprocess
+import boto3
+import bagit
+
+from botocore.exceptions import ClientError
 
 
 def buildDirectoryList(sourcePath):
