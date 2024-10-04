@@ -1,12 +1,12 @@
-import os
-import bagit
-import subprocess
-import boto3
-from pathlib import Path
-import glob
-
 from botocore.exceptions import ClientError
+from pathlib import Path
 from subprocess import CalledProcessError
+
+import bagit
+import boto3
+import glob
+import os
+import subprocess
 
 
 def buildDirectoryList(sourcePath):
@@ -45,7 +45,6 @@ def s3FileExists(fileName, bucket):
     s3_client = boto3.client("s3")
     try:
         s3_client.head_object(Bucket=bucket, Key=fileName)
-        print("EXISTS: %s found in %s" % (fileName, bucket))
         return True
     except ClientError as e:
         if e.response["Error"]["Code"] == "404":
@@ -55,13 +54,12 @@ def s3FileExists(fileName, bucket):
         return False
 
 
-# need to strip the first element from the path to create a valid path for rsync
+# removes top level source directory name to prevent duplicate directories in destination
 def norfileFileExists(fileName, syncDest):
     delim = "/"
     sourceElements = Path(fileName).parts[1:]
     fileElements = "".join([str(elements) + delim for elements in sourceElements])
     p = Path("%s/%s" % (syncDest, fileElements))
-    #    print("The path is %s and file name is %s" % (p, sourceElements[-1]))
     return p.exists()
 
 
@@ -76,22 +74,13 @@ def uploadFileList(fileList, bucket, syncDest):
 
         if norfileFileExists(fileName, syncDest) is False:
             try:
-                delim = "/"
-                sourceElements = Path(fileName).parts[0:2]
-                syncBag = "".join(
-                    [str(elements) + delim for elements in sourceElements]
-                )
-                syncBag = syncBag[: len(syncBag) - len(delim)]
-                print("bag is %s" % (syncBag))
 
+                # We know this is a file because fileList is filtered for directories
+                p = Path(fileName)
                 subprocess.check_call(
-                    [
-                        "./syncCron.sh",
-                        syncBag,
-                        syncDest,
-                    ],
+                    ["./copyWithFullPath.sh", str(p.name), str(p.parent), syncDest],
                 )
-                print("%s has been synced to %s" % (syncBag, syncDest))
+                print("%s been synced to %s" % (str(p.name), syncDest))
 
             except CalledProcessError as e:
                 print("An error has occurred", e)
@@ -104,9 +93,9 @@ def main(sourcePath, bucket, syncDest):
     4)for each bag, build file list and upload files--s3 first
     """
 
-    #    if not os.path.ismount(syncDest):
-    #        print("%s is not a mounted share" % (syncDest))
-    #        return
+    if not os.path.ismount(syncDest):
+        print("%s is not a mounted share" % (syncDest))
+        return None
 
     dirPaths = buildDirectoryList(sourcePath)
 
