@@ -66,22 +66,25 @@ def norfileFileExists(fileName, syncDest):
 def uploadFileList(sourcePath, fileList, bucket, syncDest):
     s3_client = boto3.client("s3")
     # check for files in s3--if they exist, exclude from upload
-    # make sure to give the fileName as a string for boto3--it doesn't like Path objects as S3 Keys
+    # make sure to give the s3Path as a string for boto3--it doesn't like Path objects as S3 Keys
     for fileName in fileList:
+        p = Path(fileName)
+        sourceRoot = Path(sourcePath).parent
+        s3Path = p.relative_to(sourceRoot)
+        bagWithoutSource = p.relative_to(sourcePath).parent
+
         if s3FileExists(str(fileName), bucket) is False:
             s3_client.upload_file(
                 fileName,
                 bucket,
-                str(fileName),
+                str(s3Path),
                 ExtraArgs={"ChecksumAlgorithm": "SHA256"},
             )
-            print("Uploaded file %s to %s" % (fileName, bucket))
+            print("Uploaded file %s to %s" % (s3Path, bucket))
 
         if norfileFileExists(fileName, syncDest) is False:
             try:
                 # We know this is a file because fileList is filtered for directories
-                p = Path(fileName)
-                bagWithoutSource = p.relative_to(sourcePath).parent
                 subprocess.check_call(
                     [
                         "./copyWithFullPath.sh",
