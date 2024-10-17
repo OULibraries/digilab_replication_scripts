@@ -63,22 +63,33 @@ def norfileFileExists(fileName, syncDest):
     return p.exists()
 
 
-def uploadFileList(fileList, bucket, syncDest):
+def uploadFileList(sourcePath, fileList, bucket, syncDest):
     s3_client = boto3.client("s3")
     # check for files in s3--if they exist, exclude from upload
     # make sure to give the fileName as a string for boto3--it doesn't like Path objects as S3 Keys
     for fileName in fileList:
         if s3FileExists(str(fileName), bucket) is False:
-            s3_client.upload_file(fileName, bucket, str(fileName))
+            s3_client.upload_file(
+                fileName,
+                bucket,
+                str(fileName),
+                ExtraArgs={"ChecksumAlgorithm": "SHA256"},
+            )
             print("Uploaded file %s to %s" % (fileName, bucket))
 
         if norfileFileExists(fileName, syncDest) is False:
             try:
-
                 # We know this is a file because fileList is filtered for directories
                 p = Path(fileName)
+                bagWithoutSource = p.relative_to(sourcePath).parent
                 subprocess.check_call(
-                    ["./copyWithFullPath.sh", str(p.name), str(p.parent), syncDest],
+                    [
+                        "./copyWithFullPath.sh",
+                        str(p.name),
+                        str(p),
+                        str(bagWithoutSource),
+                        syncDest,
+                    ],
                 )
                 print("%s been synced to %s" % (str(p.name), syncDest))
 
@@ -103,7 +114,7 @@ def main(sourcePath, bucket, syncDest):
 
     for bagPath in bagPaths:
         fileList = buildFileList(bagPath)
-        uploadFileList(fileList, bucket, syncDest)
+        uploadFileList(sourcePath, fileList, bucket, syncDest)
 
 
 if __name__ == "__main__":

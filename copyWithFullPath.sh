@@ -1,7 +1,8 @@
 #!/bin/bash
 
-MYFILE=$1
-MYPATH=$2
-SYNCDEST=$3
+FILEONLY=$1
+FILEWITHSOURCEPATH=$2
+BAGONLY=$3
+SYNCDEST=$4
 
-mkdir -p "${SYNCDEST}/${MYPATH}" && cp --no-clobber "${MYPATH}/${MYFILE}" "${SYNCDEST}/${MYPATH}/${MYFILE}"
+mkdir -p "${SYNCDEST}/${BAGONLY}" && cp --no-clobber "${FILEWITHSOURCEPATH}" "${SYNCDEST}/${BAGONLY}/${FILEONLY}"
