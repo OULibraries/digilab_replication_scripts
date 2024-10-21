@@ -69,18 +69,19 @@ def uploadFileList(sourcePath, fileList, bucket, syncDest):
     # make sure to give the s3Path as a string for boto3--it doesn't like Path objects as S3 Keys
     for fileName in fileList:
         p = Path(fileName)
-        sourceRoot = Path(sourcePath).parent
-        s3Path = p.relative_to(sourceRoot)
-        bagWithoutSource = p.relative_to(sourcePath).parent
+        #        sourceRoot = Path(sourcePath).parent
+        #        s3Path = p.relative_to(sourceRoot)
+        pathFromBag = p.relative_to(sourcePath)
+        bagAndSourceDir = Path("source/%s" % (pathFromBag))
 
         if s3FileExists(str(fileName), bucket) is False:
             s3_client.upload_file(
                 fileName,
                 bucket,
-                str(s3Path),
+                str(bagAndSourceDir),
                 ExtraArgs={"ChecksumAlgorithm": "SHA256"},
             )
-            print("Uploaded file %s to %s" % (s3Path, bucket))
+            print("Uploaded file %s to %s" % (bagAndSourceDir, bucket))
 
         if norfileFileExists(fileName, syncDest) is False:
             try:
@@ -90,7 +91,7 @@ def uploadFileList(sourcePath, fileList, bucket, syncDest):
                         "./copyWithFullPath.sh",
                         str(p.name),
                         str(p),
-                        str(bagWithoutSource),
+                        str(pathFromBag),
                         syncDest,
                     ],
                 )
