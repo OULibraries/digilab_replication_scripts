@@ -69,10 +69,10 @@ def uploadFileList(sourcePath, fileList, bucket, syncDest):
     # make sure to give the s3Path as a string for boto3--it doesn't like Path objects as S3 Keys
     for fileName in fileList:
         p = Path(fileName)
-        #        sourceRoot = Path(sourcePath).parent
-        #        s3Path = p.relative_to(sourceRoot)
+        sourceDir = Path(sourcePath).name
         pathFromBag = p.relative_to(sourcePath)
-        bagAndSourceDir = Path("source/%s" % (pathFromBag))
+        # use this version of the variable for private, preservation, and shareok directories
+        bagAndSourceDir = Path("%s/%s" % (sourceDir, pathFromBag))
 
         if s3FileExists(str(fileName), bucket) is False:
             s3_client.upload_file(
