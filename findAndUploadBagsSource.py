@@ -23,7 +23,7 @@ def buildDirectoryList(sourcePath):
 def bagExceptionWrapper(path):
     try:
         return bagit.Bag(path).is_valid()
-    except bagit.BagError as e:
+    except bagit.BagError:
         print("%s is not a bag" % (path))
 
 

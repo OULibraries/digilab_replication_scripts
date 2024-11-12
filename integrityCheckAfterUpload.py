@@ -1,18 +1,12 @@
-import sys
 import hashlib
-import boto3
 from pathlib import Path
-from hmac import compare_digest
-
+import logging
+import bagit
+import boto3
 from botocore.exceptions import ClientError
 
 # These functions will need to be copied over and modified to return the values
 # for data integrity validation. Print statements will also need to be changed
-from findAndUploadBags import (
-    buildDirectoryList,
-    buildBagList,
-    buildFileList,
-)
 
 
 def buildDirectoryList(sourcePath):
@@ -28,7 +22,7 @@ def buildDirectoryList(sourcePath):
 def bagExceptionWrapper(path):
     try:
         return bagit.Bag(path).is_valid()
-    except bagit.BagError as e:
+    except bagit.BagError:
         print("%s is not a bag" % (path))
 
 
@@ -45,27 +39,36 @@ def buildFileList(bagPath):
     filePaths = [f for f in allPaths if not Path(f).is_dir()]
     return filePaths
 
-    ## TODO add functions to verify existence of bags
+
+def s3FileExists(fileName, bucket):
+    s3_client = boto3.client("s3")
+    try:
+        s3_client.head_object(Bucket=bucket, Key=fileName)
+        return True
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "404":
+            print("404: %s not found in %s" % (fileName, bucket))
+        else:
+            print("An unexpected error has occured")
+        return False
 
     # From oulibq tasks.py
     # def validate_s3_files(bag_name,local_source_path,s3_bucket,s3_base_key='source'):
     """
-    Validate s3 files
+    Validate s3 files using the ETag 
     args:
-        bag_name,local_source_path,s3_bucket
-    kwargs:
-        s3_base_key='source'
+        fileList, sourcePath, bucket
     """
 
 
-def validateS3Hash(fileList, sourcPath, bucket):  # return manifest items to validate
+def validateS3Hash(fileList, sourcePath, bucket):  # return manifest items to validate
     s3_client = boto3.client("s3")
-    s3Key = s3_client.list_objects(Bucket=bucket, Prefix=bagName)
     # open the manifest-md5.txt, parse the contents into filename and hash lists
     for fileName in fileList:
-        if "Contents" in s3Key:
-            fileName["exists"] = True
-            manifest = str("%s/manidfest-md5.txt" % (bagName))
+        p = Path(fileName)
+        bagName = (p.parent).relative_to(sourcePath).parts[0]
+        if s3FileExists(str(fileName, bucket)) is True:
+            manifest = str("%s/manifest-md5.txt" % (bagName))
             manifestItems = []
             with open(manifest, "r") as f:
                 for line in f.readlines():
@@ -74,20 +77,23 @@ def validateS3Hash(fileList, sourcPath, bucket):  # return manifest items to val
                     manifestFilename = " ".join(manifestFilename).strip()
                     manifestItems.append({"md5": hashVal, "filename": manifestFilename})
             # format lists of hash and metadata for return after validation
+            result = {}
             result["bucket"] = bucket
             result["verified"] = []
             result["error"] = []
-            result["valid"] = [false]
+            result["valid"] = [False]
             for row in manifestItems:
                 md5, manifestFilename = row["md5"], row["manifestFilename"]
                 try:
-                    etag = s3.head_object(Bucket=bucket, Key=fileName)["ETag"][1:-1]
+                    etag = s3_client.head_object(Bucket=bucket, Key=fileName)["ETag"][
+                        1:-1
+                    ]
                 except ClientError:
                     errormsg = str(
-                        "Failed to get S3 object heaer for key: %s" % (fileName)
+                        "Failed to get S3 object hash for key: %s" % (fileName)
                     )
                     logging.error(errormsg)
-                    raise Exception(errormsg)
+                    raise ClientError(errormsg)
                 if calculateMultipartETag(sourcePath, etag) or etag == md5:
                     result["verified"].append(fileName)
                 else:
@@ -95,16 +101,10 @@ def validateS3Hash(fileList, sourcPath, bucket):  # return manifest items to val
             if len(result["error"]) == 0:
                 result["valid"] = True
         else:
-            fileName["exists"] = False
+            print("%s not found in %s" % (fileName, bucket))
 
         print("Status: Success: %s" % (fileName))
         return result["verified"]
-
-
-#    response = s3_client.get_object_attributes(
-#        Bucket=bucket, Key=fileName, ObjectAttributes=["ETag"]
-#    )
-#    return response
 
 
 def calculateMultipartETag(fileName, etag, chunkSizeMB=8):
@@ -141,28 +141,6 @@ def calculateMultipartETag(fileName, etag, chunkSizeMB=8):
     newEtag = "%s-%s" % (newMd5.hexdigest(), len(md5s))
     if etag == newEtag:
         return True
-    else:
-        return False
-
-
-# Checksums for every item are in manifest---.txt in bag
-# Checksum for manifest---.txt, bagit.txt, and bag-info.txt are in tagmanifest---.txt
-# The bag itself doesn't have a separate hash
-
-
-# 3. Compare each key:value in dictionaries
-# def compareAndValidateMD5(s3FileHash, manifestHash):
-
-#    if s3FileHash == manifestHash:
-#        print("File integrity validated %s" % (fileName))
-
-#    else:
-#        print("Files are different")
-#        print("Hash from S3: %s" % (s3FileHash))
-#        print("Hash from NAS: %s" % (manifestHash))
-
-
-# 6. Return result-- "success--tombstone bag %s" % ((fileName).relative_to(bagPath)), "failure--reupload bag"
 
 
 def main(sourcePath, bucket):
@@ -176,15 +154,11 @@ def main(sourcePath, bucket):
         validateS3Hash(fileList, sourcePath, bucket)
 
 
-#        compareAndValidateMD5(s3Hash, nasHash)
-
-
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--sourcePath", help="which dir to upload to aws")
     parser.add_argument("--bucket", help="to which bucket to upload in aws")
-    parser.add_argument("--syncDest", help="local rsync dest")
     args = parser.parse_args()
-    main(sourcePath=args.sourcePath, bucket=args.bucket, syncDest=args.syncDest)
+    main(sourcePath=args.sourcePath, bucket=args.bucket)

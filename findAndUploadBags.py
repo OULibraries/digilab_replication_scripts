@@ -75,12 +75,7 @@ def uploadFileList(sourcePath, fileList, bucket, syncDest):
         bagAndSourceDir = Path("%s/%s" % (sourceDir, pathFromBag))
 
         if s3FileExists(str(fileName), bucket) is False:
-            s3_client.upload_file(
-                fileName,
-                bucket,
-                str(bagAndSourceDir),
-                ExtraArgs={"ChecksumAlgorithm": "SHA256"},
-            )
+            s3_client.upload_file(fileName, bucket, str(bagAndSourceDir))
             print("Uploaded file %s to %s" % (bagAndSourceDir, bucket))
 
         if norfileFileExists(fileName, syncDest) is False:
