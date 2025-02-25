@@ -10,12 +10,13 @@ from botocore.exceptions import ClientError
 
 
 def buildDirectoryList(sourcePath):
+    """Make a list of directires in the sourcePath."""
+
     p = Path(sourcePath)
     # Non-recursive -- we only want one level of subdirectory from the sourcePath
     allPaths = list(p.glob("*"))
     # select top level objects and validate as a directory
     dirPaths = [str(i) for i in allPaths if i.is_dir()]
-    print("%s will be validated as bags" % (dirPaths))
     return dirPaths
 
 
@@ -48,7 +49,7 @@ def s3FileExists(fileName, bucket):
         return True
     except ClientError as e:
         if e.response["Error"]["Code"] == "404":
-            print("404: %s not found in %s" % (fileName, bucket))
+            print("File %s/%s not found, will sync." % (bucket, fileName))
         else:
             print("An unexpected error has occured")
         return False
@@ -56,29 +57,42 @@ def s3FileExists(fileName, bucket):
 
 # removes top level source directory name to prevent duplicate directories in destination
 def norfileFileExists(fileName, syncDest):
-    delim = "/"
-    sourceElements = Path(fileName).parts[1:]
-    fileElements = "".join([str(elements) + delim for elements in sourceElements])
-    p = Path("%s/%s" % (syncDest, fileElements))
+    # delim = "/"
+    # sourceElements = Path(fileName).parts[1:]
+    # fileElements = "".join([str(elements) + delim for elements in sourceElements])
+
+    p = Path("%s/%s" % (syncDest, fileName))
     return p.exists()
 
 
 def uploadFileList(sourcePath, fileList, bucket, syncDest):
+    """Upload a list of files to specified locations in S3 and norfile"""
+
     s3_client = boto3.client("s3")
-    # check for files in s3--if they exist, exclude from upload
-    # make sure to give the s3Path as a string for boto3--it doesn't like Path objects as S3 Keys
+
     for fileName in fileList:
         p = Path(fileName)
         sourceDir = Path(sourcePath).name
         pathFromBag = p.relative_to(sourcePath)
         # use this version of the variable for private, preservation, and shareok directories
+
+        # TODO find a better name for bagAndSourceDir
+        # This is the filepath with both the bag name and the containing dir included.
+        # Also, this is probably more complicated than it needs to be.
         bagAndSourceDir = Path("%s/%s" % (sourceDir, pathFromBag))
 
-        if s3FileExists(str(fileName), bucket) is False:
+        # Skip files that we've already uploaded to S3
+        # TODO Right now we just check name, but should check hash
+        # Casting to str because boto3 it doesn't like Path objects as S3 Keys
+        if s3FileExists(str(bagAndSourceDir), bucket) is False:
             s3_client.upload_file(fileName, bucket, str(bagAndSourceDir))
-            print("Uploaded file %s to %s" % (bagAndSourceDir, bucket))
+            print("Uploaded %s/%s" % (bucket, bagAndSourceDir))
+        else:
+            print("Found %s/%s, not uploading." % (bucket, bagAndSourceDir))
 
-        if norfileFileExists(fileName, syncDest) is False:
+        # Skip files that we've already copied to norfile
+        if norfileFileExists(bagAndSourceDir, syncDest) is False:
+
             try:
                 # We know this is a file because fileList is filtered for directories
                 subprocess.check_call(
@@ -90,30 +104,38 @@ def uploadFileList(sourcePath, fileList, bucket, syncDest):
                         syncDest,
                     ],
                 )
-                print("%s been synced to %s" % (str(p.name), syncDest))
+                print(
+                    "Copied %s/%s to norfile if not already present."
+                    % (syncDest, str(p.name))
+                )
 
             except CalledProcessError as e:
                 print("An error has occurred", e)
 
 
 def main(sourcePath, bucket, syncDest):
-    """1)make a list of things that might be bags(in either private or source)--just top-level directories
-    2)filter non-directories
-    3)filter non-bags
-    4)for each bag, build file list and upload files--s3 first
-    """
+    """Search the given dir for bags and copy them to norfile and S3"""
 
-    if not os.path.ismount(syncDest):
-        print("%s is not a mounted share" % (syncDest))
-        return None
+    # TODO FIXME This doesn't work and needs replaced.
+    # The syncDest is on a mounted share, but isn't the root of it anymore
+    #   if not os.path.ismount(syncDest):
+    #       print("%s is not a mounted share" % (syncDest))
+    #       return None
 
+    # Find the directories that might be bags at our sourcePath
     dirPaths = buildDirectoryList(sourcePath)
-
+    # Filter out everything that doesn't look like a bag
     bagPaths = buildBagList(dirPaths)
 
     for bagPath in bagPaths:
+
+        print("START")
+        print("Processing bag at %s\n" % (bagPath))
+
         fileList = buildFileList(bagPath)
         uploadFileList(sourcePath, fileList, bucket, syncDest)
+
+        print("END")
 
 
 if __name__ == "__main__":
