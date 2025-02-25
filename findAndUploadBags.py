@@ -73,13 +73,13 @@ def uploadFileList(sourcePath, fileList, bucket, syncDest):
     for fileName in fileList:
         p = Path(fileName)
         sourceDir = Path(sourcePath).name
-        pathFromBag = p.relative_to(sourcePath)
+        pathInBag = p.relative_to(sourcePath)
         # use this version of the variable for private, preservation, and shareok directories
 
         # TODO find a better name for bagAndSourceDir
         # This is the filepath with both the bag name and the containing dir included.
         # Also, this is probably more complicated than it needs to be.
-        bagAndSourceDir = Path("%s/%s" % (sourceDir, pathFromBag))
+        bagAndSourceDir = Path("%s/%s" % (sourceDir, pathInBag))
 
         # Skip files that we've already uploaded to S3
         # TODO Right now we just check name, but should check hash
@@ -100,13 +100,13 @@ def uploadFileList(sourcePath, fileList, bucket, syncDest):
                         "./copyWithFullPath.sh",
                         str(p.name),
                         str(p),
-                        str(pathFromBag),
+                        str(pathInBag.parent ),
                         syncDest,
                     ],
                 )
                 print(
-                    "Copied %s/%s to norfile if not already present."
-                    % (syncDest, str(p.name))
+                    "Added %s/%s to norfile if not already present."
+                    % (syncDest, str(pathInBag))
                 )
 
             except CalledProcessError as e:
